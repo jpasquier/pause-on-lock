@@ -20,8 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-VERSION="2.1.0"
-RELEASE_DATE="2020-11-10"
+VERSION="2.1.1"
+RELEASE_DATE="2025-07-09"
 
 __is_playing() {
   dbus-send --print-reply --dest="$INTERFACE.$1" "$OBJPATH" \
@@ -58,6 +58,10 @@ PAUSED_PLAYER="none"
 # variable indicating whether to use playerctl
 PLAYERCTL=false
 
+# variable indicating whether mpd should be excluded from the list of players
+# returned by playerctl
+EXCLUDE_MPD=false
+
 # parse command line options
 while (( "$#" )); do
   case "$1" in
@@ -70,6 +74,7 @@ while (( "$#" )); do
       echo "    -c|--playerctl     enable playerctl support"
       echo "    -h|--help          print this help text and exit"
       echo "    -v|--version       print version information and exit"
+      echo "    -e|--exclude-mpd   exclude mpd from playerctl list of players"
       echo ""
       echo "For more information visit https://github.com/folixg/pause-on-lock"
       echo ""
@@ -90,6 +95,10 @@ while (( "$#" )); do
         exit 1
       fi
       PLAYERCTL=true
+      shift
+      ;;
+    -e|--exclude-mpd)
+      EXCLUDE_MPD=true
       shift
       ;;
     *)
@@ -127,6 +136,9 @@ dbus-monitor --session "type='signal',$DBUS_LOCK" | \
       if $PLAYERCTL; then
         # get list of running players
         read -r -a players <<< "$(playerctl --list-all)"
+        if "$EXCLUDE_MPD"; then
+          players=($(printf '%s\n' "${players[@]}" | grep -v '^mpd$'))
+        fi
         # check whether a player is playing
         for player in "${players[@]}"
         do
